@@ -37,4 +37,4 @@ Base on
 * optimizer1.cpp: base + 2's reduced,
 * optimizer2.cpp: opt1 + broadcast reduced,
 * optimizer3.cpp: opt2 + cache reduced,
-* optimizer4.cpp: opt3 + 3's reduced + O3.
+* optimizer4.cpp: opt3 + 3's and 5's reduced + O3.
