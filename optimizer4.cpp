@@ -82,22 +82,22 @@ int main(int argc, char *argv[])
    low_block = BLOCK_LOW(id, p, no);
    high_block = BLOCK_HIGH(id, p, no);
    num_block = high_block-low_block+1;
-	marked = (bool *) malloc(num_block);
+	marked = (bool *) malloc(MIN(num_block,chunk));
 
    count=0;
    for (int sec = 0; sec < num_block; sec += chunk) {
-      bool* cur=marked+sec; int block=MIN(chunk,num_block-sec);
       for(int k=0;k<8;++k){
+         int block=MIN(chunk,num_block-sec);
          if(n<begArr[k]+(low_block+sec+block-1)*30)block--;
-         memset(cur,0,block);
+         memset(marked,0,block);
          for(auto prime : primeVec){
             int pos=posArr[prime%30];
             int offset=offsetArr[k][pos];
             first = (prime*(prime+offset)-7)/30-low_block-sec;
             if(first<0) first=(first%prime+prime)%prime;
-            for (int i = first; i < block; i += prime)cur[i] = 1;
+            for (int i = first; i < block; i += prime)marked[i] = 1;
          }
-         for (int i=0; i<block; i++)if (!cur[i]) count++;
+         for (int i=0; i<block; i++)if (!marked[i]) count++;
       }
    }
 	
