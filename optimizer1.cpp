@@ -20,17 +20,17 @@ int main(int argc, char *argv[])
    int    p;            /* Number of processes */
    int    prime;        /* Current prime */
    int    size;         /* Elements in 'marked' */
-   int    no;
-
+   int    no;           /* Number of odds in 3, ..., 'n' */
+   
+   /* Start the timer */
    MPI_Init (&argc, &argv);
    MPI_Comm_rank (MPI_COMM_WORLD, &id);
    MPI_Comm_size (MPI_COMM_WORLD, &p);
    MPI_Barrier(MPI_COMM_WORLD);
-   /* Start the timer */
    elapsed_time = -MPI_Wtime();
 
    n = atoi(argv[1]);
-   no = (n-1)/2; // nubmer of odds in 3 to n
+   no = (n-1)/2; /* Number of odds in 3, ..., 'n' */
 
 	/* Figure out this process's share of the array, as
       well as the integers represented by the first and
@@ -46,20 +46,24 @@ int main(int argc, char *argv[])
 	index = 0;
 	prime = 3;
 	do {
+      /* Get the index of first multiple*/
 		first = (prime*prime-low_value)/2;
 		if(first<0) first=(first%prime+prime)%prime;
-		for (int i=first; i <size; i+=prime) marked[i] = 1; //skip 2*prime, prime is odd
+      /* Sieve the multiples*/
+		for (int i=first; i <size; i+=prime) marked[i] = 1;
+      /* Get the next prime*/
       if(!id){
          while (marked[++index]);
 		   prime = (index<<1)+3;
       }
+      /* Broadcast the next prime*/
       MPI_Bcast (&prime,  1, MPI_INT, 0, MPI_COMM_WORLD);
 	} while (prime*prime<=n);
-	
+	/* Count the number of primes*/
 	count = 0;
 	for (int i=0; i<size; i++)if (!marked[i]) count++;
+   /* Reduce local counts*/
 	MPI_Reduce(&count, &global_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-
 	/* Stop the timer */
 	elapsed_time += MPI_Wtime();
 

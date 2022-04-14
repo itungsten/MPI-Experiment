@@ -20,19 +20,18 @@ int main(int argc, char *argv[])
    int    p;            /* Number of processes */
    int    prime;        /* Current prime */
    int    size;         /* Elements in 'marked' */
-   int    no;
+   int    no;           /* Number of odds in 3, ..., 'n' */
+   int    chunk=128*1024;/* Batch size (half of L1-cache)*/
 
+   /* Start the timer */
    MPI_Init (&argc, &argv);
    MPI_Comm_rank (MPI_COMM_WORLD, &id);
    MPI_Comm_size (MPI_COMM_WORLD, &p);
    MPI_Barrier(MPI_COMM_WORLD);
-   /* Start the timer */
    elapsed_time = -MPI_Wtime();
 
-   n = atoi(argv[1]);
-   int chunk = 131072;
-   if(argc==3)chunk=atoi(argv[2]);
-   no = (n-1)/2; // nubmer of odds in 3 to n
+   n = atoi(argv[1]); if(argc==3)chunk=atoi(argv[2]);
+   no = (n-1)/2; /* Number of odds in 3, ..., 'n' */
 
 	/* Figure out this process's share of the array, as
       well as the integers represented by the first and
@@ -41,41 +40,45 @@ int main(int argc, char *argv[])
    high_value = 2 * BLOCK_HIGH(id, p, no) + 3;
    size = (high_value-low_value)/2+1;
 
+	int sqr=sqrt(n),sqrr=sqrt(sqr),primes_size=(sqr-1)/2; /* Number of odds in 3, ..., 'sqr' */
 	/* Allocate this process' share of the array */
 	marked = (bool *) malloc(size);
 	for (int i=0; i<size; i++) marked[i] = 0;
-	
-	int sqr=sqrt(n),sqrr=sqrt(sqr);
-	int primes_size = (sqr - 3)/2 + 1; // number of adds in 3 .. sqr 
 	bool* primes = (bool *) malloc(primes_size);
 	for (int i=0; i<primes_size; i++) primes[i] = 0;
 
 	index = 0;
 	prime = 3;
 	do {
+      /* Sieve the multiples*/
 		for (int i = (prime*prime-3)/2; i < primes_size; i += prime) primes[i] = 1;
-		while (primes[++index]);
+		/* Get the next prime*/
+      while (primes[++index]);
 		prime = (index<<1)+3;
 	} while (prime <= sqrr);
 	
+   /* Sieve by batch for better cache-hit rate*/
 	for (int sec = 0; sec < size; sec += chunk) {
 		index = 0;
 		prime = 3;
 		int lv = 2*((low_value-3)/2+sec)+3;
 		do {
+         /* Get the index of first multiple*/
 			first = (prime*prime-lv)/2;
 			if(first<0) first=(first%prime+prime)%prime;
+         /* Sieve the multiples*/
 			for (int i = first+sec; i < first+sec+chunk && i < size; i += prime)
 				marked[i] = 1;
-			while (primes[++index]);
+			/* Get the next prime*/
+         while (primes[++index]);
 			prime = 2*index + 3;
-		} while (prime*prime <= n);
+		} while (prime <= sqr);
 	}
-	
+	/* Count the number of primes*/
 	count = 0;
 	for (int i=0; i<size; i++)if (!marked[i]) count++;
+   /* Reduce local counts*/
 	MPI_Reduce(&count, &global_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-
 	/* Stop the timer */
 	elapsed_time += MPI_Wtime();
 
