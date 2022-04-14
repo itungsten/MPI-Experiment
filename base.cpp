@@ -51,7 +51,7 @@ int main (int argc, char *argv[])
 
    proc0_size = (n-1)/p;
 
-   if ((2 + proc0_size) < (int) sqrt((double) n)) {
+   if ((2 + proc0_size) <= (int) sqrt((double) n)) {
       if (!id) printf ("Too many processes\n");
       MPI_Finalize();
       exit (1);
@@ -89,6 +89,7 @@ int main (int argc, char *argv[])
       if (!marked[i]) count++;
    if (p > 1) MPI_Reduce (&count, &global_count, 1, MPI_INT, MPI_SUM,
       0, MPI_COMM_WORLD);
+   else global_count=count;
 
    /* Stop the timer */
 
